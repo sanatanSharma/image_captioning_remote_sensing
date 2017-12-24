@@ -1,5 +1,5 @@
 import numpy as np
-import cPickle as pickle
+import _pickle as pickle
 import hickle
 import time
 import os
@@ -24,11 +24,11 @@ def load_coco_data(data_path='./data', split='train'):
           
     for k, v in data.iteritems():
         if type(v) == np.ndarray:
-            print k, type(v), v.shape, v.dtype
+            print( k, type(v), v.shape, v.dtype)
         else:
-            print k, type(v), len(v)
+            print( k, type(v), len(v))
     end_t = time.time()
-    print "Elapse time: %.2f" %(end_t - start_t)
+    print( "Elapse time: %.2f" %(end_t - start_t))
     return data
 
 def decode_captions(captions, idx_to_word):
@@ -84,5 +84,5 @@ def load_pickle(path):
 
 def save_pickle(data, path):
     with open(path, 'wb') as f:
-        pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
+        pickle.dump(data, f)
         print ('Saved %s..' %path)
