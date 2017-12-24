@@ -6,10 +6,11 @@ from core.utils import *
 import tensorflow as tf
 import numpy as np
 import pandas as pd
-import hickle
+# import hickle
+import scipy.io as scp
 import os
 import json
-
+# import h5py
 
 def _process_caption_data(caption_file, image_dir, max_length):
     with open(caption_file) as f:
@@ -187,7 +188,7 @@ def main():
         tf.initialize_all_variables().run()
         for split in ['train', 'val', 'test']:
             anno_path = './data/%s/%s.annotations.pkl' % (split, split)
-            save_path = './data/%s/%s.features.hkl' % (split, split)
+            save_path = './data/%s/%s.features.npy' % (split, split)
             annotations = load_pickle(anno_path)
             image_path = list(annotations['file_name'].unique())
             n_examples = len(image_path)
@@ -203,7 +204,7 @@ def main():
                 print ("Processed %d %s features.." % (end, split))
 
             # use hickle to save huge feature vectors
-            hickle.dump(all_feats, save_path)
+            print(all_feats.shape)
             print ("Saved %s.." % (save_path))
 
 

@@ -4,10 +4,10 @@ import skimage.transform
 import numpy as np
 import time
 import os 
-import cPickle as pickle
+import _pickle as pickle
 from scipy import ndimage
-from utils import *
-from bleu import evaluate
+from core.utils import *
+from core.bleu_w import evaluate
 
 
 class CaptioningSolver(object):
@@ -75,40 +75,49 @@ class CaptioningSolver(object):
 
         # build graphs for training model and sampling captions
         loss = self.model.build_model()
-        tf.get_variable_scope().reuse_variables()
-        _, _, generated_captions = self.model.build_sampler(max_len=20)
+        # tf.get_variable_scope().reuse_variables()
+        # _, _, generated_captions = self.model.build_sampler(max_len=20)
 
-        # train op
-        with tf.name_scope('optimizer'):
-            optimizer = self.optimizer(learning_rate=self.learning_rate)
-            grads = tf.gradients(loss, tf.trainable_variables())
-            grads_and_vars = list(zip(grads, tf.trainable_variables()))
-            train_op = optimizer.apply_gradients(grads_and_vars=grads_and_vars)
-           
-        # summary op   
-        tf.scalar_summary('batch_loss', loss)
-        for var in tf.trainable_variables():
-            tf.histogram_summary(var.op.name, var)
-        for grad, var in grads_and_vars:
-            tf.histogram_summary(var.op.name+'/gradient', grad)
+        # # train op
+        # with tf.name_scope('optimizer'):
+        #     optimizer = self.optimizer(learning_rate=self.learning_rate)
+        #     grads = tf.gradients(loss, tf.trainable_variables())
+        #     grads_and_vars = list(zip(grads, tf.trainable_variables()))
+        #     train_op = optimizer.apply_gradients(grads_and_vars=grads_and_vars)
         
-        summary_op = tf.merge_all_summaries() 
+        with tf.variable_scope(tf.get_variable_scope()) as scope:
+            with tf.name_scope('optimizer'):
+                tf.get_variable_scope().reuse_variables()
+                _, _, generated_captions = self.model.build_sampler(max_len=20)
+                optimizer = self.optimizer(learning_rate=self.learning_rate)
+                grads = tf.gradients(loss, tf.trainable_variables())
+                grads_and_vars = list(zip(grads, tf.trainable_variables()))
+        train_op = optimizer.apply_gradients(grads_and_vars=grads_and_vars)
 
-        print "The number of epoch: %d" %self.n_epochs
-        print "Data size: %d" %n_examples
-        print "Batch size: %d" %self.batch_size
-        print "Iterations per epoch: %d" %n_iters_per_epoch
+        # summary op   
+        tf.summary.scalar('batch_loss', loss)
+        for var in tf.trainable_variables():
+            tf.summary.histogram(var.op.name, var)
+        # for grad, var in grads_and_vars:
+        #     tf.histogram_summary(var.op.name+'/gradient', grad)
+        
+        summary_op = tf.summary.merge_all() 
+
+        print( "The number of epoch: %d" %self.n_epochs)
+        print( "Data size: %d" %n_examples)
+        print( "Batch size: %d" %self.batch_size)
+        print( "Iterations per epoch: %d" %n_iters_per_epoch)
         
         config = tf.ConfigProto(allow_soft_placement = True)
         #config.gpu_options.per_process_gpu_memory_fraction=0.9
         config.gpu_options.allow_growth = True
         with tf.Session(config=config) as sess:
-            tf.initialize_all_variables().run()
-            summary_writer = tf.train.SummaryWriter(self.log_path, graph=tf.get_default_graph())
+            tf.global_variables_initializer().run()
+            summary_writer = tf.summary.FileWriter(self.log_path, graph=tf.get_default_graph())
             saver = tf.train.Saver(max_to_keep=40)
 
             if self.pretrained_model is not None:
-                print "Start training with pretrained Model.."
+                print( "Start training with pretrained Model..")
                 saver.restore(sess, self.pretrained_model)
 
             prev_loss = -1
@@ -121,6 +130,7 @@ class CaptioningSolver(object):
                 image_idxs = image_idxs[rand_idxs]
 
                 for i in range(n_iters_per_epoch):
+                    print("Epoch ", e, " iteration ", i)
                     captions_batch = captions[i*self.batch_size:(i+1)*self.batch_size]
                     image_idxs_batch = image_idxs[i*self.batch_size:(i+1)*self.batch_size]
                     features_batch = features[image_idxs_batch]
@@ -134,18 +144,18 @@ class CaptioningSolver(object):
                         summary_writer.add_summary(summary, e*n_iters_per_epoch + i)
 
                     if (i+1) % self.print_every == 0:
-                        print "\nTrain loss at epoch %d & iteration %d (mini-batch): %.5f" %(e+1, i+1, l)
+                        print( "\nTrain loss at epoch %d & iteration %d (mini-batch): %.5f" %(e+1, i+1, l))
                         ground_truths = captions[image_idxs == image_idxs_batch[0]]
                         decoded = decode_captions(ground_truths, self.model.idx_to_word)
                         for j, gt in enumerate(decoded):
-                            print "Ground truth %d: %s" %(j+1, gt)                    
+                            print( "Ground truth %d: %s" %(j+1, gt))                    
                         gen_caps = sess.run(generated_captions, feed_dict)
                         decoded = decode_captions(gen_caps, self.model.idx_to_word)
-                        print "Generated caption: %s\n" %decoded[0]
+                        print( "Generated caption: %s\n" %decoded[0])
 
-                print "Previous epoch loss: ", prev_loss
-                print "Current epoch loss: ", curr_loss
-                print "Elapsed time: ", time.time() - start_t
+                print( "Previous epoch loss: ", prev_loss)
+                print( "Current epoch loss: ", curr_loss)
+                print( "Elapsed time: ", time.time() - start_t)
                 prev_loss = curr_loss
                 curr_loss = 0
                 
@@ -166,7 +176,7 @@ class CaptioningSolver(object):
                 # save model's parameters
                 if (e+1) % self.save_every == 0:
                     saver.save(sess, os.path.join(self.model_path, 'model'), global_step=e+1)
-                    print "model-%s saved." %(e+1)
+                    print( "model-%s saved." %(e+1))
             
          
     def test(self, data, split='train', attention_visualization=True, save_sampled_captions=True):
@@ -200,7 +210,7 @@ class CaptioningSolver(object):
 
             if attention_visualization:
                 for n in range(10):
-                    print "Sampled Caption: %s" %decoded[n]
+                    print( "Sampled Caption: %s" %decoded[n])
 
                     # Plot original image
                     img = ndimage.imread(image_files[n])

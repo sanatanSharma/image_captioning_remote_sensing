@@ -1,11 +1,14 @@
-import cPickle as pickle
+import _pickle as pickle
 import os
 import sys
-sys.path.append('../coco-caption')
-from pycocoevalcap.bleu.bleu import Bleu
-from pycocoevalcap.rouge.rouge import Rouge
-from pycocoevalcap.cider.cider import Cider
-from pycocoevalcap.meteor.meteor import Meteor
+sys.path.append('..\coco-caption\pycocoevalcap\\bleu')
+from bleu import Bleu
+sys.path.append('..\coco-caption\pycocoevalcap\\rouge')
+from rouge import Rouge
+sys.path.append('..\coco-caption\pycocoevalcap\\cider')
+from cider import Cider
+sys.path.append('..\coco-caption\pycocoevalcap\\meteor')
+from meteor import Meteor
 
 def score(ref, hypo):
     scorers = [
@@ -45,13 +48,13 @@ def evaluate(data_path='./data', split='val', get_scores=False):
     final_scores = score(ref, hypo)
 
     # print out scores
-    print 'Bleu_1:\t',final_scores['Bleu_1']  
-    print 'Bleu_2:\t',final_scores['Bleu_2']  
-    print 'Bleu_3:\t',final_scores['Bleu_3']  
-    print 'Bleu_4:\t',final_scores['Bleu_4']  
-    print 'METEOR:\t',final_scores['METEOR']  
-    print 'ROUGE_L:',final_scores['ROUGE_L']  
-    print 'CIDEr:\t',final_scores['CIDEr']
+    print( 'Bleu_1:\t',final_scores['Bleu_1'] ) 
+    print( 'Bleu_2:\t',final_scores['Bleu_2'])  
+    print( 'Bleu_3:\t',final_scores['Bleu_3']  )
+    print( 'Bleu_4:\t',final_scores['Bleu_4']  )
+    print( 'METEOR:\t',final_scores['METEOR']  )
+    print( 'ROUGE_L:',final_scores['ROUGE_L']  )
+    print( 'CIDEr:\t',final_scores['CIDEr'])
     
     if get_scores:
         return final_scores
