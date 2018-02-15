@@ -65,7 +65,7 @@ class CaptioningSolver(object):
 
     def train(self):
         # train/val dataset
-        n_examples = self.data['captions'].shape[0]
+	n_examples = self.data['captions'].shape[0]
         n_iters_per_epoch = int(np.ceil(float(n_examples)/self.batch_size))
         features = self.data['features']
         captions = self.data['captions']
@@ -79,6 +79,11 @@ class CaptioningSolver(object):
         # _, _, generated_captions = self.model.build_sampler(max_len=20)
 
         # # train op
+        # with tf.name_scope('optimizer'):
+        #     optimizer = self.optimizer(learning_rate=self.learning_rate)
+        #     grads = tf.gradients(loss, tf.trainable_variables())
+        #     grads_and_vars = list(zip(grads, tf.trainable_variables()))
+        #     train_op = optimizer.apply_gradients(grads_and_vars=grads_and_vars)
         
         with tf.variable_scope(tf.get_variable_scope()) as scope:
             with tf.name_scope('optimizer'):
@@ -118,7 +123,7 @@ class CaptioningSolver(object):
             prev_loss = -1
             curr_loss = 0
             start_t = time.time()
-            # training.............................................
+
             for e in range(self.n_epochs):
                 rand_idxs = np.random.permutation(n_examples)
                 captions = captions[rand_idxs]
@@ -133,7 +138,7 @@ class CaptioningSolver(object):
                     _, l = sess.run([train_op, loss], feed_dict)
                     curr_loss += l
 
-                    #write summary for tensorboard visualization
+                    # write summary for tensorboard visualization
                     if i % 10 == 0:
                         summary = sess.run(summary_op, feed_dict)
                         summary_writer.add_summary(summary, e*n_iters_per_epoch + i)
@@ -154,27 +159,27 @@ class CaptioningSolver(object):
                 prev_loss = curr_loss
                 curr_loss = 0
                 
-                #print out BLEU scores and file write
+                # print out BLEU scores and file write
                 if self.print_bleu:
                     all_gen_cap = np.ndarray((val_features.shape[0], 20))
                     for i in range(n_iters_val):
                         features_batch = val_features[i*self.batch_size:(i+1)*self.batch_size]
-                        feed_dict = {self.model.features: features_batch}
+			feed_dict = {self.model.features: features_batch}
                         gen_cap = sess.run(generated_captions, feed_dict=feed_dict)  
                         all_gen_cap[i*self.batch_size:(i+1)*self.batch_size] = gen_cap
                     
                     all_decoded = decode_captions(all_gen_cap, self.model.idx_to_word)
-                    save_pickle(all_decoded, "./data/val/val.candidate.captions.pkl")#..................
-                scores = evaluate(data_path='./data', split='val', get_scores=True)
-                write_bleu(scores=scores, path=self.model_path, epoch=1)
+                    save_pickle(all_decoded, "./data/val/val.candidate.captions.pkl")
+                    scores = evaluate(data_path='./data', split='val', get_scores=True)
+                    write_bleu(scores=scores, path=self.model_path, epoch=e)
 
-                # save model's parameters............................
+                # save model's parameters
                 if (e+1) % self.save_every == 0:
                     saver.save(sess, os.path.join(self.model_path, 'model'), global_step=e+1)
-                    print( "model-%s saved." %(e+1))#.............................
+                    print( "model-%s saved." %(e+1))
             
          
-    def test(self, data, split='test', attention_visualization=True, save_sampled_captions=True):
+    def test(self, data, split='train', attention_visualization=True, save_sampled_captions=True):
         '''
         Args:
             - data: dictionary with the following keys:
